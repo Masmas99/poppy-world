@@ -10,6 +10,8 @@ export type DogAnimationState =
   | 'landing'
   | 'barking'
   | 'sniffing'
+  | 'eating'
+  | 'sleeping'
   | 'sitting'
   | 'swimming';
 

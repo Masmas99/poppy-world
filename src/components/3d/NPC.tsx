@@ -41,7 +41,7 @@ export function BarnabyTheCat({ dogPosition, position }: NPCProps) {
 
       if (!isNear.current) {
         isNear.current = true;
-        setInteractionPrompt('Press [E] Talk with Barnaby / [Q] Bark to Greet', talkWithBarnaby);
+        setInteractionPrompt('Tap ACT / Press [E] to talk with Barnaby; tap BARK / [Q] to greet', talkWithBarnaby);
       }
     } else {
       headRef.current.rotation.y = THREE.MathUtils.lerp(headRef.current.rotation.y, 0, delta * 3);

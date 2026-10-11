@@ -10,7 +10,7 @@ interface ThirdPersonCameraProps {
 }
 
 export function ThirdPersonCamera({ targetPosition }: ThirdPersonCameraProps) {
-  const { camera, gl } = useThree();
+  const { camera, gl, scene } = useThree();
   const gameState = useGameStore((s) => s.gameState);
   const sensitivity = useGameStore((s) => s.settings.cameraSensitivity);
 
@@ -19,6 +19,8 @@ export function ThirdPersonCamera({ targetPosition }: ThirdPersonCameraProps) {
   const pitch = useRef<number>(0.32); // Vertical angle (in radians)
   const distance = useRef<number>(4.8); // Ideal distance behind puppy
   const smoothedTarget = useRef<THREE.Vector3>(new THREE.Vector3(0, 1, 0));
+  const cameraRay = useRef(new THREE.Raycaster());
+  const cameraDirection = useRef(new THREE.Vector3());
   const isDragging = useRef<boolean>(false);
   const prevMousePos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -129,7 +131,26 @@ export function ThirdPersonCamera({ targetPosition }: ThirdPersonCameraProps) {
       smoothedTarget.current.z + offsetZ
     );
 
-    // Obstacle avoidance: ground height floor
+    // Keep terrain between the puppy and camera from hiding the character.
+    cameraDirection.current.copy(desiredCamPos).sub(smoothedTarget.current);
+    const cameraDistance = cameraDirection.current.length();
+    cameraDirection.current.normalize();
+    cameraRay.current.set(smoothedTarget.current, cameraDirection.current);
+    cameraRay.current.near = 0.15;
+    cameraRay.current.far = cameraDistance;
+    const terrain = [
+      scene.getObjectByName('world-ground'),
+      scene.getObjectByName('windmill-hill'),
+    ].filter((object): object is THREE.Object3D => object !== undefined);
+    const obstruction = cameraRay.current.intersectObjects(terrain, false)[0];
+    if (obstruction) {
+      desiredCamPos.copy(smoothedTarget.current).addScaledVector(
+        cameraDirection.current,
+        Math.max(0.5, obstruction.distance - 0.25)
+      );
+    }
+
+    // Keep the camera above the global ground plane.
     if (desiredCamPos.y < 0.5) {
       desiredCamPos.y = 0.5;
     }

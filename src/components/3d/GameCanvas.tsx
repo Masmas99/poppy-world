@@ -69,7 +69,7 @@ export function GameCanvas() {
 
         <Suspense fallback={null}>
           <Physics gravity={[0, -20, 0]} timeStep="vary">
-            <World />
+            <World dogPosition={dogPos} />
             <DogController onPositionUpdate={setDogPos} />
             <Collectibles dogPosition={dogPos} />
             <BallInteraction dogPosition={dogPos} />

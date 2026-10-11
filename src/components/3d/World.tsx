@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { RigidBody, CuboidCollider, CylinderCollider, BallCollider } from '@react-three/rapier';
+import { RigidBody, MeshCollider, CuboidCollider, CylinderCollider, BallCollider } from '@react-three/rapier';
+import { useGameStore } from '@/store/useGameStore';
 
 // Stylized 3D Tree with guaranteed solid trunk collider
 export function StylizedTree({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
@@ -147,18 +148,91 @@ export function WoodenFenceSegment({
 }
 
 // Landmark 1: 3D Cozy Doghouse
-export function Doghouse({ position }: { position: [number, number, number] }) {
+export function Doghouse({
+  position,
+  dogPosition,
+}: {
+  position: [number, number, number];
+  dogPosition: THREE.Vector3;
+}) {
+  const activePrompt = useRef<string | null>(null);
+  const foodTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hasFood, setHasFood] = useState(true);
+  const feedAction = useRef<() => void>(() => {});
+
+  feedAction.current = () => {
+    if (!hasFood) {
+      useGameStore.setState({ feedbackMessage: 'The bowl is empty. Food will be back soon.' });
+      return;
+    }
+
+    useGameStore.getState().feedDog();
+    setHasFood(false);
+    foodTimer.current = setTimeout(() => setHasFood(true), 8000);
+  };
+
+  useEffect(() => () => {
+    if (foodTimer.current) clearTimeout(foodTimer.current);
+    if (activePrompt.current) {
+      const store = useGameStore.getState();
+      if (store.interactionPrompt === activePrompt.current) {
+        store.setInteractionPrompt(null);
+      }
+    }
+  }, []);
+
+  useFrame(() => {
+    const localX = dogPosition.x - position[0];
+    const localZ = dogPosition.z - position[2];
+    const isInsideHouse = Math.abs(localX) < 0.68 && localZ > -1.05 && localZ < -0.15;
+    const isNearBowl = Math.hypot(localX - 0.95, localZ - 1.7) < 1.35;
+    const nextPrompt = isInsideHouse
+      ? 'Tap ACT / Press [E] to sleep in your house'
+      : isNearBowl
+        ? 'Tap ACT / Press [E] to eat from your bowl'
+        : null;
+
+    if (nextPrompt === activePrompt.current) return;
+
+    const store = useGameStore.getState();
+    if (activePrompt.current && store.interactionPrompt === activePrompt.current) {
+      store.setInteractionPrompt(null);
+    }
+
+    activePrompt.current = nextPrompt;
+    if (nextPrompt) {
+      const action = isInsideHouse ? store.sleepDog : () => feedAction.current();
+      store.setInteractionPrompt(nextPrompt, action);
+    }
+  });
+
   return (
     <RigidBody type="fixed" colliders={false} position={position}>
-      <CuboidCollider args={[1.4, 1.3, 1.4]} position={[0, 1.3, 0]} />
+      {/* Leave a real opening in the front wall so the dog can enter. */}
+      <CuboidCollider args={[0.2875, 0.925, 1.15]} position={[-0.8625, 1.15, 0]} />
+      <CuboidCollider args={[0.2875, 0.925, 1.15]} position={[0.8625, 1.15, 0]} />
+      <CuboidCollider args={[1.15, 0.925, 0.08]} position={[0, 1.15, -1.07]} />
+      <CuboidCollider args={[0.575, 0.25, 0.08]} position={[0, 1.825, 1.07]} />
 
       <mesh position={[0, 0.12, 0]} receiveShadow>
         <boxGeometry args={[3.0, 0.24, 3.0]} />
         <meshStandardMaterial color="#5c3a21" roughness={0.85} />
       </mesh>
 
-      <mesh position={[0, 1.15, 0]} castShadow receiveShadow>
-        <boxGeometry args={[2.3, 1.85, 2.3]} />
+      <mesh position={[-0.8625, 1.15, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.575, 1.85, 2.3]} />
+        <meshStandardMaterial color="#b08968" roughness={0.75} />
+      </mesh>
+      <mesh position={[0.8625, 1.15, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.575, 1.85, 2.3]} />
+        <meshStandardMaterial color="#b08968" roughness={0.75} />
+      </mesh>
+      <mesh position={[0, 1.825, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.15, 0.5, 2.3]} />
+        <meshStandardMaterial color="#b08968" roughness={0.75} />
+      </mesh>
+      <mesh position={[0, 1.15, -1.07]} castShadow receiveShadow>
+        <boxGeometry args={[2.3, 1.85, 0.16]} />
         <meshStandardMaterial color="#b08968" roughness={0.75} />
       </mesh>
 
@@ -171,10 +245,6 @@ export function Doghouse({ position }: { position: [number, number, number] }) {
         ))
       )}
 
-      <mesh position={[0, 0.85, 1.16]} castShadow>
-        <boxGeometry args={[1.15, 1.35, 0.08]} />
-        <meshStandardMaterial color="#7f5539" roughness={0.8} />
-      </mesh>
       <mesh position={[0, 0.85, 1.17]}>
         <planeGeometry args={[0.95, 1.2]} />
         <meshBasicMaterial color="#1f140e" />
@@ -198,6 +268,16 @@ export function Doghouse({ position }: { position: [number, number, number] }) {
         <cylinderGeometry args={[0.24, 0.24, 0.06, 16]} />
         <meshStandardMaterial color="#6b3e08" roughness={0.9} />
       </mesh>
+      {hasFood && (
+        <group position={[0.95, 0.405, 1.7]}>
+          {[-0.09, 0, 0.09].map((x, index) => (
+            <mesh key={index} position={[x, index === 1 ? 0.025 : 0, index === 1 ? -0.04 : 0.04]}>
+              <sphereGeometry args={[0.055, 8, 8]} />
+              <meshStandardMaterial color="#a66a2c" roughness={0.8} />
+            </mesh>
+          ))}
+        </group>
+      )}
       <mesh position={[0, 0.25, 1.6]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[1.3, 0.85]} />
         <meshStandardMaterial color="#f72585" roughness={0.85} />
@@ -218,25 +298,20 @@ export function Windmill({ position }: { position: [number, number, number] }) {
 
   return (
     <group position={position}>
-      {/*
-        SMOOTH WINDMILL HILL & RAMP COLLIDERS:
-        Includes a gentle inclined ramp path (slope < 6 degrees)
-        so the puppy walks up smoothly like a regular garden path!
-      */}
+      {/* Match collision to the visible slope instead of making a vertical ledge. */}
       <RigidBody type="fixed" colliders={false}>
-        {/* Main top plateau */}
-        <CylinderCollider args={[0.5, 6.8]} position={[0, 0.5, 0]} />
-        {/* Gentle outer mound base */}
-        <CylinderCollider args={[0.2, 13.5]} position={[0, 0.2, 0]} />
-        {/* Smooth gentle entrance ramp leading up from the stone path */}
-        <CuboidCollider args={[2.5, 0.2, 5.0]} position={[0, 0.5, 5.5]} rotation={[-0.1, 0, 0]} />
-        {/* Solid Windmill Tower Center */}
-        <CylinderCollider args={[4.2, 2.0]} position={[0, 4.5, 0]} />
+        <MeshCollider type="hull">
+          <mesh position={[0, 0.5, 0]}>
+            <cylinderGeometry args={[6.8, 14, 1.0, 48, 1]} />
+            <meshBasicMaterial visible={false} />
+          </mesh>
+        </MeshCollider>
+        <CylinderCollider args={[4.2, 2.0]} position={[0, 5.2, 0]} />
       </RigidBody>
 
-      {/* Gentle Visual Hill Mesh (height only 1.0m, very easy slope) */}
-      <mesh receiveShadow position={[0, 0.5, 0]}>
-        <cylinderGeometry args={[6.8, 14, 1.0, 24]} />
+      {/* Hill matches the sloped trimesh collider above. */}
+      <mesh name="windmill-hill" receiveShadow position={[0, 0.5, 0]}>
+        <cylinderGeometry args={[6.8, 14, 1.0, 48, 1]} />
         <meshStandardMaterial color="#2d6a4f" roughness={0.8} />
       </mesh>
 
@@ -422,14 +497,14 @@ export function InstancedFlowers({ count = 180 }: { count?: number }) {
   );
 }
 
-export function World() {
+export function World({ dogPosition }: { dogPosition: THREE.Vector3 }) {
   return (
     <group>
       {/* Ground plane collider */}
       <RigidBody type="fixed" colliders={false} position={[0, 0, 0]}>
         <CuboidCollider args={[45, 1, 45]} position={[0, -1, 0]} />
 
-        <mesh receiveShadow position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh name="world-ground" receiveShadow position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[90, 90, 48, 48]} />
           <meshStandardMaterial color="#40916c" roughness={0.75} />
         </mesh>
@@ -466,7 +541,7 @@ export function World() {
       </group>
 
       {/* Landmarks */}
-      <Doghouse position={[0, 0, -3.5]} />
+      <Doghouse position={[0, 0, -3.5]} dogPosition={dogPosition} />
       <Windmill position={[16, 0, -16]} />
       <Pond position={[-14, 0, 12]} />
 

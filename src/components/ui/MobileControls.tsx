@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '@/store/useGameStore';
 
 export function MobileControls() {
@@ -11,36 +11,30 @@ export function MobileControls() {
   const [knobPos, setKnobPos] = useState({ x: 0, y: 0 });
   const [isSprinting, setIsSprinting] = useState(false);
   const joystickBaseRef = useRef<HTMLDivElement>(null);
-  const activeTouchId = useRef<number | null>(null);
+  const activePointerId = useRef<number | null>(null);
 
-  const handleJoystickStart = (e: React.TouchEvent) => {
-    e.stopPropagation();
-    const touch = e.changedTouches[0];
-    activeTouchId.current = touch.identifier;
-    updateJoystick(touch.clientX, touch.clientY);
+  useEffect(() => () => {
+    setMobileInput({ moveX: 0, moveY: 0, jump: false, sprint: false });
+  }, [setMobileInput]);
+
+  const handleJoystickStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    activePointerId.current = e.pointerId;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    updateJoystick(e.clientX, e.clientY);
   };
 
-  const handleJoystickMove = (e: React.TouchEvent) => {
-    e.stopPropagation();
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      const touch = e.changedTouches[i];
-      if (touch.identifier === activeTouchId.current) {
-        updateJoystick(touch.clientX, touch.clientY);
-        break;
-      }
-    }
+  const handleJoystickMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerId !== activePointerId.current) return;
+    e.preventDefault();
+    updateJoystick(e.clientX, e.clientY);
   };
 
-  const handleJoystickEnd = (e: React.TouchEvent) => {
-    e.stopPropagation();
-    for (let i = 0; i < e.changedTouches.length; i++) {
-      if (e.changedTouches[i].identifier === activeTouchId.current) {
-        activeTouchId.current = null;
-        setKnobPos({ x: 0, y: 0 });
-        setMobileInput({ moveX: 0, moveY: 0 });
-        break;
-      }
-    }
+  const handleJoystickEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerId !== activePointerId.current) return;
+    activePointerId.current = null;
+    setKnobPos({ x: 0, y: 0 });
+    setMobileInput({ moveX: 0, moveY: 0 });
   };
 
   const updateJoystick = (clientX: number, clientY: number) => {
@@ -80,10 +74,10 @@ export function MobileControls() {
       <div
         ref={joystickBaseRef}
         className="joystick-base"
-        onTouchStart={handleJoystickStart}
-        onTouchMove={handleJoystickMove}
-        onTouchEnd={handleJoystickEnd}
-        onTouchCancel={handleJoystickEnd}
+        onPointerDown={handleJoystickStart}
+        onPointerMove={handleJoystickMove}
+        onPointerUp={handleJoystickEnd}
+        onPointerCancel={handleJoystickEnd}
       >
         <div
           className="joystick-knob"
@@ -98,7 +92,10 @@ export function MobileControls() {
         {/* Sprint Button */}
         <button
           className={`mobile-btn sprint-btn ${isSprinting ? 'active-sprint' : ''}`}
-          onTouchStart={toggleSprint}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            toggleSprint();
+          }}
         >
           <span className="btn-maintext">{isSprinting ? 'RUN' : 'SPRINT'}</span>
         </button>
@@ -106,8 +103,13 @@ export function MobileControls() {
         {/* Jump Button */}
         <button
           className="mobile-btn jump-btn"
-          onTouchStart={() => setMobileInput({ jump: true })}
-          onTouchEnd={() => setMobileInput({ jump: false })}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            setMobileInput({ jump: true });
+          }}
+          onPointerUp={() => setMobileInput({ jump: false })}
+          onPointerCancel={() => setMobileInput({ jump: false })}
+          onLostPointerCapture={() => setMobileInput({ jump: false })}
         >
           <span className="btn-maintext">JUMP</span>
         </button>
@@ -115,7 +117,10 @@ export function MobileControls() {
         {/* Interact / Kick Button */}
         <button
           className="mobile-btn interact-btn"
-          onTouchStart={() => interact()}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            interact();
+          }}
         >
           <span className="btn-maintext">ACT</span>
         </button>
@@ -123,7 +128,10 @@ export function MobileControls() {
         {/* Bark Button */}
         <button
           className="mobile-btn bark-btn"
-          onTouchStart={() => bark()}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            bark();
+          }}
         >
           <span className="btn-maintext">BARK</span>
         </button>

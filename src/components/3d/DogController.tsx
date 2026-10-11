@@ -134,6 +134,10 @@ export function DogController({ onPositionUpdate }: DogControllerProps) {
     moveDirection.addScaledVector(camRight, inputRight);
 
     const hasInput = moveDirection.lengthSq() > 0.01;
+    if (hasInput && animationState === 'sleeping') {
+      setAnimationState('walking');
+      useGameStore.setState({ feedbackMessage: 'Your puppy woke up.' });
+    }
 
     let targetSpeed = 0;
     if (hasInput) {
@@ -207,7 +211,12 @@ export function DogController({ onPositionUpdate }: DogControllerProps) {
     }
 
     // State machine
-    if (animationState !== 'barking' && animationState !== 'sniffing') {
+    if (
+      animationState !== 'barking' &&
+      animationState !== 'sniffing' &&
+      animationState !== 'eating' &&
+      animationState !== 'sleeping'
+    ) {
       if (isInWater) {
         setAnimationState('swimming');
       } else if (!isTouchingGround && jumpCooldownRef.current > 0.1) {
@@ -243,16 +252,12 @@ export function DogController({ onPositionUpdate }: DogControllerProps) {
       restitution={0}
       linearDamping={1.2}
       angularDamping={5}
+      ccd
       lockRotations
       enabledRotations={[false, false, false]}
     >
-      {/*
-        Precise capsule collider:
-        halfHeight=0.18, radius=0.22, center at y=0.40.
-        Bottom at 0.40 - 0.40 = 0.00.
-        Paws in DogCharacter touch 0.00.
-      */}
-      <CapsuleCollider args={[0.18, 0.22]} position={[0, 0.4, 0]} />
+      {/* The rigid body starts at y=0.4, so this centered collider rests at ground level. */}
+      <CapsuleCollider args={[0.18, 0.22]} />
 
       <group ref={characterGroupRef}>
         <DogCharacter

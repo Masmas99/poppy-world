@@ -66,6 +66,8 @@ export function ProceduralCorgi({
     const isJumping = animationState === 'jumping' || animationState === 'falling';
     const isBarking = animationState === 'barking';
     const isSniffing = animationState === 'sniffing';
+    const isEating = animationState === 'eating';
+    const isSleeping = animationState === 'sleeping';
     const isSitting = animationState === 'sitting';
     const isSwimming = animationState === 'swimming';
 
@@ -117,6 +119,16 @@ export function ProceduralCorgi({
       bodyRef.current.position.y = 0.38 + Math.abs(Math.sin(time * (animSpeed * 0.5))) * bobAmp;
       bodyRef.current.rotation.z = Math.sin(time * (animSpeed * 0.5)) * (isSprinting ? 0.08 : 0.04);
       bodyRef.current.rotation.x = isSprinting ? 0.12 : 0.05;
+    } else if (isSleeping) {
+      bodyRef.current.position.y = THREE.MathUtils.lerp(
+        bodyRef.current.position.y,
+        0.24 + Math.sin(time * 1.8) * 0.015,
+        0.12
+      );
+      bodyRef.current.rotation.x = THREE.MathUtils.lerp(bodyRef.current.rotation.x, -0.32, 0.12);
+    } else if (isEating) {
+      bodyRef.current.position.y = 0.36 + Math.sin(time * 9) * 0.018;
+      bodyRef.current.rotation.x = 0.04;
     } else if (isSitting) {
       bodyRef.current.position.y = THREE.MathUtils.lerp(bodyRef.current.position.y, 0.26, 0.15);
       bodyRef.current.rotation.x = THREE.MathUtils.lerp(bodyRef.current.rotation.x, -0.38, 0.15);
@@ -134,6 +146,12 @@ export function ProceduralCorgi({
     } else if (isBarking) {
       tailRef.current.rotation.y = Math.sin(time * 30) * 0.7;
       tailRef.current.rotation.x = 0.6;
+    } else if (isSleeping) {
+      tailRef.current.rotation.y = Math.sin(time * 1.8) * 0.04;
+      tailRef.current.rotation.x = 0.1;
+    } else if (isEating) {
+      tailRef.current.rotation.y = Math.sin(time * 8) * 0.3;
+      tailRef.current.rotation.x = 0.25;
     } else if (isMoving) {
       tailRef.current.rotation.y = Math.sin(time * (animSpeed * 0.8)) * 0.45;
       tailRef.current.rotation.x = 0.4;
@@ -147,6 +165,14 @@ export function ProceduralCorgi({
       headRef.current.rotation.x = -0.22; // Head held proudly high above water
       headRef.current.position.y = 0.42;
       if (mouthRef.current) mouthRef.current.rotation.x = 0;
+    } else if (isSleeping) {
+      headRef.current.rotation.x = THREE.MathUtils.lerp(headRef.current.rotation.x, 0.3, 0.12);
+      headRef.current.position.y = THREE.MathUtils.lerp(headRef.current.position.y, 0.25, 0.12);
+      if (mouthRef.current) mouthRef.current.rotation.x = 0;
+    } else if (isEating) {
+      headRef.current.rotation.x = 0.42 + Math.sin(time * 9) * 0.12;
+      headRef.current.position.y = 0.2 + Math.abs(Math.sin(time * 9)) * 0.04;
+      if (mouthRef.current) mouthRef.current.rotation.x = 0.12 + Math.sin(time * 18) * 0.12;
     } else if (isBarking) {
       headRef.current.rotation.x = THREE.MathUtils.lerp(headRef.current.rotation.x, -0.35, 0.3);
       if (mouthRef.current) mouthRef.current.rotation.x = THREE.MathUtils.lerp(mouthRef.current.rotation.x, 0.35, 0.3);

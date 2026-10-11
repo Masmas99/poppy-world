@@ -49,6 +49,8 @@ interface GameStoreState {
   collectCoin: (id: string) => void;
   bark: () => void;
   interact: () => void;
+  feedDog: () => void;
+  sleepDog: () => void;
   updateQuestProgress: (questId: string, amount: number) => void;
   claimQuestReward: (questId: string) => void;
   dismissCelebration: () => void;
@@ -287,6 +289,26 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         }
       }, 700);
     }
+  },
+
+  feedDog: () => {
+    soundManager.playSniff();
+    set({
+      animationState: 'eating',
+      feedbackMessage: 'Yum! Your puppy enjoyed a tasty snack.',
+    });
+    setTimeout(() => {
+      if (get().animationState === 'eating') {
+        set({ animationState: 'idle' });
+      }
+    }, 1800);
+  },
+
+  sleepDog: () => {
+    set({
+      animationState: 'sleeping',
+      feedbackMessage: 'Zzz... Your puppy is taking a nap. Move to wake up.',
+    });
   },
 
   updateQuestProgress: (questId: string, amount: number) => {
