@@ -22,7 +22,17 @@ body {
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
+}
+
+.game-viewport canvas {
+  touch-action: none;
+}
+
+.touch-device .desktop-only,
+.touch-device .hud-controls-helper {
+  display: none !important;
 }
 
 /* ================= HUD ================= */
@@ -205,7 +215,7 @@ body {
   display: inline-block;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px), (pointer: coarse) {
   .desktop-only {
     display: none !important;
   }
@@ -314,7 +324,7 @@ body {
   letter-spacing: 0.4px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px), (pointer: coarse) {
   .hud-controls-helper {
     display: none;
   }
@@ -774,9 +784,9 @@ body {
 .joystick-base {
   position: absolute;
   left: max(20px, env(safe-area-inset-left, 20px));
-  bottom: max(24px, env(safe-area-inset-bottom, 24px));
-  width: 132px;
-  height: 132px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(36px, 7svh, 56px));
+  width: clamp(96px, 18vw, 132px);
+  height: clamp(96px, 18vw, 132px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -789,8 +799,8 @@ body {
 }
 
 .joystick-knob {
-  width: 58px;
-  height: 58px;
+  width: 44%;
+  height: 44%;
   border: 2px solid rgba(255, 255, 255, 0.85);
   border-radius: 50%;
   background: linear-gradient(145deg, #74c69d, #2d6a4f);
@@ -801,16 +811,16 @@ body {
 .mobile-actions-cluster {
   position: absolute;
   right: max(18px, env(safe-area-inset-right, 18px));
-  bottom: max(24px, env(safe-area-inset-bottom, 24px));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + clamp(36px, 7svh, 56px));
   display: grid;
-  grid-template-columns: repeat(2, 64px);
-  gap: 10px;
+  grid-template-columns: repeat(2, clamp(52px, 14vw, 64px));
+  gap: clamp(6px, 1.5vw, 10px);
   pointer-events: auto;
 }
 
 .mobile-btn {
-  min-width: 64px;
-  min-height: 52px;
+  min-width: 0;
+  min-height: clamp(44px, 6svh, 52px);
   padding: 6px;
   border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: 16px;
@@ -846,6 +856,24 @@ body {
 
 .bark-btn {
   background: rgba(220, 38, 38, 0.94);
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .joystick-base {
+    width: clamp(84px, 24vh, 112px);
+    height: clamp(84px, 24vh, 112px);
+  }
+
+  .mobile-actions-cluster {
+    grid-template-columns: repeat(2, clamp(46px, 12vh, 56px));
+    gap: 5px;
+  }
+
+  .mobile-btn {
+    min-height: clamp(38px, 11vh, 46px);
+    border-radius: 12px;
+    font-size: 0.62rem;
+  }
 }
 
 /* KONAMI CROSS D-PAD */

@@ -23,6 +23,8 @@ export function ThirdPersonCamera({ targetPosition }: ThirdPersonCameraProps) {
   const cameraDirection = useRef(new THREE.Vector3());
   const isDragging = useRef<boolean>(false);
   const prevMousePos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const cameraPointerId = useRef<number | null>(null);
+  const prevTouchPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Mouse & Touch Orbit Controls
   useEffect(() => {
@@ -59,35 +61,30 @@ export function ThirdPersonCamera({ targetPosition }: ThirdPersonCameraProps) {
       distance.current = Math.max(2.8, Math.min(7.5, distance.current + e.deltaY * 0.003));
     };
 
-    // Touch controls for camera rotation on non-joystick areas
-    let touchStartX = 0;
-    let touchStartY = 0;
+    const isTouchControl = (e: PointerEvent) =>
+      e.pointerType === 'touch' &&
+      !(e.target instanceof Element && e.target.closest('.mobile-controls-layer, .hud-container'));
 
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        const touch = e.touches[0];
-        // If touch is on right half of screen, use for camera
-        if (touch.clientX > window.innerWidth * 0.35) {
-          touchStartX = touch.clientX;
-          touchStartY = touch.clientY;
-        }
-      }
+    const onPointerDown = (e: PointerEvent) => {
+      if (gameState !== 'playing' || !isTouchControl(e) || e.clientX < window.innerWidth * 0.35) return;
+      cameraPointerId.current = e.pointerId;
+      prevTouchPos.current = { x: e.clientX, y: e.clientY };
     };
 
-    const onTouchMove = (e: TouchEvent) => {
-      if (gameState !== 'playing' || e.touches.length !== 1) return;
-      const touch = e.touches[0];
-      if (touch.clientX > window.innerWidth * 0.35) {
-        const dx = touch.clientX - touchStartX;
-        const dy = touch.clientY - touchStartY;
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
+    const onPointerMove = (e: PointerEvent) => {
+      if (gameState !== 'playing' || e.pointerId !== cameraPointerId.current) return;
+      const dx = e.clientX - prevTouchPos.current.x;
+      const dy = e.clientY - prevTouchPos.current.y;
+      prevTouchPos.current = { x: e.clientX, y: e.clientY };
 
-        const factor = 0.0045 * sensitivity;
-        yaw.current -= dx * factor;
-        pitch.current += dy * factor;
-        pitch.current = Math.max(0.08, Math.min(Math.PI / 2.3, pitch.current));
-      }
+      const factor = 0.0065 * sensitivity;
+      yaw.current -= dx * factor;
+      pitch.current += dy * factor;
+      pitch.current = Math.max(0.08, Math.min(Math.PI / 2.3, pitch.current));
+    };
+
+    const onPointerEnd = (e: PointerEvent) => {
+      if (e.pointerId === cameraPointerId.current) cameraPointerId.current = null;
     };
 
     window.addEventListener('mousedown', onMouseDown);
@@ -95,16 +92,20 @@ export function ThirdPersonCamera({ targetPosition }: ThirdPersonCameraProps) {
     window.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('wheel', onWheel, { passive: true });
 
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('pointermove', onPointerMove, true);
+    window.addEventListener('pointerup', onPointerEnd, true);
+    window.addEventListener('pointercancel', onPointerEnd, true);
 
     return () => {
       window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       canvas.removeEventListener('wheel', onWheel);
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('pointermove', onPointerMove, true);
+      window.removeEventListener('pointerup', onPointerEnd, true);
+      window.removeEventListener('pointercancel', onPointerEnd, true);
     };
   }, [gl, gameState, sensitivity]);
 

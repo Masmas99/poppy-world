@@ -60,16 +60,26 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window !== 'undefined') {
-      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 768;
-      setIsTouchDevice(hasTouch);
+    const touchMedia = window.matchMedia('(pointer: coarse)');
+    const updateInputMode = () => {
+      setIsTouchDevice(
+        touchMedia.matches ||
+        'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        window.innerWidth <= 900
+      );
+    };
 
-      const handleResize = () => {
-        setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 768);
-      };
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
+    updateInputMode();
+    window.addEventListener('resize', updateInputMode);
+    window.addEventListener('orientationchange', updateInputMode);
+    touchMedia.addEventListener('change', updateInputMode);
+
+    return () => {
+      window.removeEventListener('resize', updateInputMode);
+      window.removeEventListener('orientationchange', updateInputMode);
+      touchMedia.removeEventListener('change', updateInputMode);
+    };
   }, []);
 
   useEffect(() => {
@@ -89,7 +99,7 @@ export default function Home() {
 
   if (!mounted) {
     return (
-      <main className="game-viewport">
+      <main className={`game-viewport ${isTouchDevice ? 'touch-device' : ''}`}>
         <div
           style={{
             position: 'absolute',
